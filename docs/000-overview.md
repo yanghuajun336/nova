@@ -1,39 +1,161 @@
-# NOVA Overview
+# NOVA 总体概览
 
-NOVA is an enterprise-grade DevOps platform design focused on platformized CI/CD for small teams managing multiple microservices.
+## 一、项目背景
 
-## Background
+NOVA 是一套面向中小规模研发团队的 DevOps 平台设计方案，目标是解决多语言微服务项目在 CI/CD 体系建设过程中常见的以下问题：
 
-The platform is intended for a team of 5-10 people, with 20-50 microservice-oriented projects, mainly using Node.js, Python, and Go. The existing infrastructure includes Gitea 1.25.5, Jira Cloud, a Kubernetes cluster with multiple namespaces, and Tencent Cloud CVM resources.
+- 每个项目各自维护流水线，重复建设严重
+- 不同语言、不同服务的构建与部署流程不统一
+- 开发者需要理解大量 CI/CD 细节，接入成本高
+- 生产发布缺乏规范审批、自动回滚与统一追踪
+- Jira 与代码、构建、部署之间缺少完整链路联动
+- 缺少统一的报表、治理规则和演进机制
 
-## Core goals
+在当前团队规模与基础设施条件下，NOVA 的定位不是做一个“大而全”的平台，而是优先建设一套**足够标准、足够统一、足够可落地**的平台化 CI/CD 体系。
 
-- Provide a platformized CI/CD experience
-- Reduce developer cognitive load through templates and defaults
-- Standardize build, test, quality, deployment, approval, rollback, and reporting
-- Integrate Jira across delivery lifecycle
-- Support future AI-agent driven operations through CLI
+## 二、当前已知基础条件
 
-## Key principles
+### 团队情况
 
-- Governance in platform, execution in workflow
-- Developers provide minimal configuration
-- Production deployment must require approval
-- Production deployment must support automatic rollback
-- Jira issue IDs should be the trace key across the lifecycle
+- 团队规模：5-10 人
+- 开发人员：4 人
+- 运维：1 人
+- 运营：1 人
+- 管理及其他角色：若干
 
-## Initial scope
+### 项目情况
 
-- Multi-language workflow templates for Node.js, Python, and Go
-- Jira integration with status sync and issue creation on rollback
-- Harbor image build and push
-- Kubernetes deployment to dev, staging, and prod
-- Email notifications and weekly reports
-- WebUI plus CLI oriented experience
+- 项目数量：20-50 个
+- 架构形态：微服务
+- 技术栈：多语言混合，主要为 Node.js、Python、Go
 
-## Out of scope for initial phase
+### 基础设施情况
 
-- Full multi-cluster management
-- Advanced deployment strategies such as blue-green and canary
-- Database migration workflow standardization
-- Deep compliance and security policy framework
+- 已使用 Gitea，版本为 1.25.5
+- 已使用 Jira Cloud
+- 已存在 Kubernetes 集群
+- 集群模式：单集群、多 Namespace
+- 运行环境：以内网 Kubernetes 为主，腾讯云 CVM 为基础
+- CI 运行位置：集群内 Gitea Runner
+- CD 目标：Kubernetes 集群
+
+### 流程要求
+
+- 当前尚无统一分支规范
+- 发布节奏：按需发布
+- 生产环境：希望引入人工审批
+- 自动回滚：回滚至上一个版本
+- 回滚条件：健康检查失败 + 关键接口异常
+
+### 质量与治理要求
+
+- SonarQube：尚未建设，需要从零制定
+- 测试要求：单元测试、接口测试、E2E 测试
+- 覆盖率目标：90%
+- 通知方式：邮件
+- 需要流水线统计报表与周报
+
+## 三、平台定位
+
+NOVA 的定位是：
+
+> 一个面向中小团队、多语言微服务场景的 DevOps 平台。
+
+它不是单纯的“发布脚本集合”，也不是一个只做运维动作的平台，而是围绕**服务接入、流水线执行、审批治理、资源编排、Jira 联动、质量控制、回滚锁定、报表分析**形成一套平台化能力。
+
+## 四、核心目标
+
+NOVA 的核心目标包括：
+
+1. 让开发者以最少配置接入标准 CI/CD
+2. 用平台治理替代项目级重复配置
+3. 建立围绕 Jira Issue 的全链路交付追踪
+4. 支持标准化测试、质量门禁和镜像构建
+5. 支持生产审批、自动回滚和故障锁定
+6. 支持资源申请自动化，如域名、PVC、HTTPRoute
+7. 提供 WebUI + CLI 双入口
+8. 为未来 AI Agent 接入保留能力边界
+
+## 五、设计原则
+
+### 1. 治理在平台，执行在工作流
+
+治理逻辑、默认规则、审批策略、锁定策略、统计与回调由平台统一管理；构建、测试、部署等执行动作由 Workflow 模板承担。
+
+### 2. 开发者最小配置
+
+开发者只需要提供少量必要信息，例如：
+
+- 技术栈
+- Dockerfile
+- 构建命令
+- 测试命令
+- 端口
+- 域名
+- Jira 项目 Key
+
+其余默认值和治理规则由平台补全。
+
+### 3. 统一抽象，兼容多语言
+
+Node.js、Python、Go 统一抽象成同一套平台输入模型，语言差异封装在中央模板中，而不是分散到项目仓库中。
+
+### 4. 生产环境必须治理
+
+生产环境必须具备：
+
+- 人工审批
+- 自动回滚
+- 故障通知
+- Jira 问题创建
+- 服务锁定机制
+
+### 5. 配置即契约
+
+`nova.yml` 不是普通配置文件，而是平台与项目之间的接入契约，也是 WebUI、CLI、Workflow、API 的统一输入基础。
+
+## 六、一期范围
+
+一期建议建设如下能力：
+
+- `nova.yml` 接入规范
+- WebUI 新建服务与编辑服务表单
+- 中央 Workflow 模板（Node.js / Python / Go）
+- Gitea 仓库接入
+- Jira 状态联动
+- SonarQube 集成
+- Harbor 镜像构建与推送
+- K8s 部署到 dev / staging / prod
+- 生产审批
+- 自动回滚
+- 邮件通知
+- 报表与周报
+
+## 七、一期暂不纳入范围
+
+以下能力暂不纳入一期核心范围：
+
+- 多集群调度
+- 蓝绿发布 / 金丝雀发布
+- 复杂数据库迁移编排
+- 完整合规与安全策略中心
+- 大规模组织级权限模型
+- 多云统一部署平台
+- 平台插件生态
+
+## 八、后续文档关系
+
+本仓库中的文档将围绕以下主题展开：
+
+- 产品定位与边界
+- 总体架构设计
+- Jira 联动机制
+- `nova.yml` 配置规范
+- WebUI 交互设计
+- Workflow 模板体系设计
+- 后端 API 设计
+- 数据库设计
+- 审批流设计
+- 实施路线图
+
+这些文档共同构成 NOVA 的设计基线。
